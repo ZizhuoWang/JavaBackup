@@ -5,6 +5,35 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.regex.*;
 public class NormalizedGoogleDistance {
+	static String regex = "百度为您找到相关结果约(.*)个";
+	static Pattern pattern = Pattern.compile(regex);
+	static String url = "http://www.baidu.com/s?wd=";
+	
+	/**
+	 * @param name
+	 * @return 搜索到的网页数量
+	 */
+	private static Double searchResult(String name){
+		try {
+			URL baiduURL = new URL(url+name);
+			URLConnection connection = baiduURL.openConnection();
+			BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+			//逐行筛选匹配正则表达式，并将结果中的逗号删除，之后转化成数字。
+			String html = in.readLine();
+			while(html!=null){
+				Matcher matcher = pattern.matcher(html);
+				while(matcher.find()){
+					System.out.println(name.replaceAll("%20", " ")+": "+matcher.group(1));//格式优化
+					String temp = matcher.group(1);
+					return Double.parseDouble(temp.replaceAll(",", ""));
+				}
+				html = in.readLine();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0.0;//有可能没有返回值，所以默认写一个0.0
+	}
 	
 	/**
 	 * @param a
@@ -16,57 +45,14 @@ public class NormalizedGoogleDistance {
 		a=a.replaceAll(" ", "");
 		b=b.replaceAll(" ", "");
 		//正则表达式匹配个数
-		String regex = "百度为您找到相关结果约(.*)个";
-		Pattern pattern = Pattern.compile(regex);
 		
 		//用于存三次搜索各自的索引量
 		Double numA,numB,numC;
 		numA=1.0;numB=1.0;numC=1.0;
 		try {
-			//三次搜索，三次连接，三个缓存阅读器
-			URL baiduURL1 = new URL("http://www.baidu.com/s?wd="+a);
-			URL baiduURL2 = new URL("http://www.baidu.com/s?wd="+b);
-			URL baiduURL3 = new URL("http://www.baidu.com/s?wd="+a+b);
-			URLConnection connection1 = baiduURL1.openConnection();
-			URLConnection connection2 = baiduURL2.openConnection();
-			URLConnection connection3 = baiduURL3.openConnection();
-			BufferedReader in1 = new BufferedReader(new InputStreamReader(connection1.getInputStream()));
-			BufferedReader in2 = new BufferedReader(new InputStreamReader(connection2.getInputStream()));
-			BufferedReader in3 = new BufferedReader(new InputStreamReader(connection3.getInputStream()));
-			
-			//逐行筛选匹配正则表达式，并将结果中的逗号删除，之后转化成数字。
-			String html1 = in1.readLine();
-			while(html1!=null){
-				Matcher matcher = pattern.matcher(html1);
-				while(matcher.find()){
-					System.out.println(a+": "+matcher.group(1));
-					String temp = matcher.group(1);
-					numA=Double.parseDouble(temp.replaceAll(",", ""));
-				}
-				html1 = in1.readLine();
-			}
-			//逐行筛选匹配正则表达式，并将结果中的逗号删除，之后转化成数字。
-			String html2 = in2.readLine();
-			while(html2!=null){
-				Matcher matcher = pattern.matcher(html2);
-				while(matcher.find()){
-					System.out.println(b+": "+matcher.group(1));
-					String temp = matcher.group(1);
-					numB=Double.parseDouble(temp.replaceAll(",", ""));
-				}
-				html2 = in2.readLine();
-			}
-			//逐行筛选匹配正则表达式，并将结果中的逗号删除，之后转化成数字。
-			String html3 = in3.readLine();
-			while(html3!=null){
-				Matcher matcher = pattern.matcher(html3);
-				while(matcher.find()){
-					System.out.println(a+"+"+b+": "+matcher.group(1));
-					String temp = matcher.group(1);
-					numC=Double.parseDouble(temp.replaceAll(",", ""));
-				}
-				html3 = in3.readLine();
-			}
+			numA = searchResult(a);
+			numB = searchResult(b);
+			numC = searchResult(a+"%20"+b);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -83,7 +69,7 @@ public class NormalizedGoogleDistance {
 	public static Double Calculate(Double numA,Double numB,Double numC){
 		Double lnx = Math.log(numA);
 		Double lny = Math.log(numB);
-		Double lnSum = Math.log(25270000000.0);//由于百度有索引总量限制，在此使用谷歌搜索总索引量
+		Double lnSum = Math.log(25270000000.0);//由于不知具体数值，这里取谷歌搜素最大索引限制
 		Double lnxy = Math.log(numC);
 		//NGD公式
 		if (lnx>lny) {
